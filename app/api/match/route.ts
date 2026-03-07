@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { runMatchingAlgorithm, type UserWithContext } from '@/lib/matching'
-import type { Interest, Profile, Venue } from '@/types'
+import type { Availability, Interest, Profile, UserInterest, Venue } from '@/types'
 
 /**
  * POST /api/match
@@ -51,17 +51,21 @@ export async function POST(req: NextRequest) {
       .select('*')
       .in('user_id', userIds)
 
+    const typedInterests = (allInterests ?? []) as UserInterest[]
+    const typedAvailability = (allAvailability ?? []) as Availability[]
+
     // ── 3. Build UserWithContext objects ────────────────────────
     const users: UserWithContext[] = typedProfiles.map(profile => ({
       profile,
-      interests: allInterests?.filter(i => i.user_id === profile.id) ?? [],
-      availability: allAvailability?.filter(a => a.user_id === profile.id) ?? [],
+      interests: typedInterests.filter(i => i.user_id === profile.id),
+      availability: typedAvailability.filter(a => a.user_id === profile.id),
     }))
 
     // ── 4. Fetch interests master list ──────────────────────────
     const { data: interestRows } = await supabase.from('interests').select('*')
+    const interestList = (interestRows ?? []) as Interest[]
     const interestMap = new Map<string, Interest>(
-      interestRows?.map(i => [i.id, i]) ?? []
+      interestList.map(i => [i.id, i])
     )
 
     // ── 5. Fetch venues ─────────────────────────────────────────

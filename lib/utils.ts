@@ -1,7 +1,5 @@
-import { type ClassValue, clsx } from 'clsx'
-
 /** Merge Tailwind classes safely */
-export function cn(...inputs: ClassValue[]) {
+export function cn(...inputs: (string | undefined | null | false)[]) {
   return inputs.filter(Boolean).join(' ')
 }
 
