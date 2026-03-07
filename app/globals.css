@@ -1,26 +1,117 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  background-color: #0a0a0f;
+  color: #e2e2f0;
+  min-height: 100vh;
 }
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111118; }
+::-webkit-scrollbar-thumb { background: #26263a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #36365a; }
+
+/* ── Selection ────────────────────────────────────────────── */
+::selection { background: rgba(196,74,244,0.3); color: #fff; }
+
+/* ── Focus ring ───────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #c44af4;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Glass card ───────────────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.glass-strong {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* ── Gradient text ────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #c44af4 0%, #818cf8 50%, #2dd4bf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Glow effects ─────────────────────────────────────────── */
+.glow-brand {
+  box-shadow: 0 0 30px rgba(196,74,244,0.25), 0 0 60px rgba(196,74,244,0.1);
+}
+.glow-teal {
+  box-shadow: 0 0 30px rgba(45,212,191,0.25);
+}
+
+/* ── Button base ──────────────────────────────────────────── */
+.btn-primary {
+  @apply relative overflow-hidden bg-brand-600 hover:bg-brand-500 text-white font-semibold 
+         px-6 py-3 rounded-xl transition-all duration-200 
+         hover:shadow-lg hover:shadow-brand-600/30 hover:-translate-y-0.5 active:translate-y-0;
+  font-family: var(--font-display);
+}
+
+.btn-secondary {
+  @apply glass hover:bg-white/10 text-white font-medium 
+         px-6 py-3 rounded-xl transition-all duration-200
+         hover:-translate-y-0.5 active:translate-y-0;
+}
+
+.btn-ghost {
+  @apply text-white/60 hover:text-white hover:bg-white/5 
+         px-4 py-2 rounded-lg transition-all duration-150;
+}
+
+/* ── Input base ───────────────────────────────────────────── */
+.input-base {
+  @apply w-full bg-surface-2 border border-white/10 rounded-xl px-4 py-3 
+         text-white placeholder-white/30 
+         focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 
+         transition-all duration-200 outline-none;
+  font-family: var(--font-body);
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+.card {
+  @apply glass rounded-2xl p-6;
+}
+
+/* ── Noise texture overlay ────────────────────────────────── */
+.noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ── Stagger animations ────────────────────────────────────── */
+.stagger-children > * {
+  opacity: 0;
+  animation: slideUp 0.4s ease forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.30s; }

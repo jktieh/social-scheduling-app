@@ -1,36 +1,148 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nichly 🎲
+
+**Nichly** is a social scheduling platform that automatically matches users by interest, location, and availability — then creates real-life meetup events.
+
+---
+
+## Tech Stack
+
+| Layer      | Technology                         |
+|------------|------------------------------------|
+| Frontend   | Next.js 14 (App Router) + TypeScript |
+| Styling    | Tailwind CSS                       |
+| Backend    | Supabase (Postgres + Auth + Realtime) |
+| Deployment | Vercel                             |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/yourname/nichly.git
+cd nichly
+npm install
+```
+
+### 2. Create a Supabase Project
+
+Go to [supabase.com](https://supabase.com) → New project.
+
+### 3. Run the Database Schema
+
+Open **Supabase → SQL Editor** and paste the contents of:
+```
+supabase/schema.sql
+```
+
+This creates all tables, triggers, RLS policies, and seeds interest + venue data.
+
+### 4. Configure Environment
+
+Copy the env template:
+```bash
+cp .env.local.example .env.local
+```
+
+Fill in your Supabase credentials:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+> Find these in: Supabase → Settings → API
+
+### 5. Enable Realtime
+
+In Supabase → Database → Replication, enable realtime for:
+- `event_messages`
+- `notifications`
+- `event_participants`
+
+### 6. Run Locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+nichly/
+├── app/
+│   ├── page.tsx              # Landing page
+│   ├── login/                # Auth pages
+│   ├── signup/
+│   ├── onboarding/           # Interest + availability setup
+│   ├── dashboard/            # Main dashboard
+│   ├── events/               # Event list + detail
+│   ├── profile/              # Profile view + edit
+│   └── api/
+│       ├── match/            # POST: run matching algorithm
+│       ├── events/           # GET: user's events
+│       └── profile/          # GET/PATCH: profile
+├── components/
+│   ├── Navbar.tsx
+│   ├── EventCard.tsx
+│   ├── ChatBox.tsx           # Realtime Supabase chat
+│   └── RSVPButton.tsx
+├── lib/
+│   ├── matching.ts           # Core matching algorithm
+│   ├── utils.ts              # Formatting helpers
+│   └── supabase/
+│       ├── client.ts         # Browser client
+│       └── server.ts         # Server + service-role client
+├── types/
+│   └── index.ts              # All TypeScript types
+└── supabase/
+    └── schema.sql            # Full DB schema (run this first!)
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Matching Algorithm
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The algorithm lives in `lib/matching.ts` and runs via `POST /api/match`.
 
-## Deploy on Vercel
+**Steps:**
+1. Group users by shared interest
+2. Filter by same city
+3. Find overlapping weekly availability
+4. Chunk into groups of 4
+5. Pick a matching venue
+6. Create event + invite participants + send notifications
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Trigger matching:**
+- Manually: `POST /api/match` (with `Authorization: Bearer $CRON_SECRET`)
+- Automated: Add a Vercel Cron Job in `vercel.json`:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```json
+{
+  "crons": [{
+    "path": "/api/match",
+    "schedule": "0 9 * * 1"
+  }]
+}
+```
+
+---
+
+## Deployment (Vercel)
+
+```bash
+vercel --prod
+```
+
+Add all environment variables in Vercel → Settings → Environment Variables.
+
+---
+
+## License
+
+MIT
