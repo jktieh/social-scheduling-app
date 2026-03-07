@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Interest, InterestCategory } from '@/types'
-import { DAY_SHORT } from '@/lib/utils'
+import { CANADIAN_CITIES, DAY_SHORT } from '@/lib/utils'
 
 type Step = 'interests' | 'availability' | 'location'
 
@@ -273,13 +273,16 @@ export default function OnboardingPage() {
 
             <div className="card">
               <label className="block text-sm text-white/60 mb-2">Your city</label>
-              <input
-                type="text"
-                className="input-base text-xl"
-                placeholder="e.g. Calgary"
+              <select
+                className="input-base text-xl w-full"
                 value={city}
                 onChange={e => setCity(e.target.value)}
-              />
+              >
+                <option value="">Select a city</option>
+                {CANADIAN_CITIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
               <p className="text-white/30 text-xs mt-2">We only match within the same city for now.</p>
             </div>
 
