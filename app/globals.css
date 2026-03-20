@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --font-display: 'Syne', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
+  --font-display: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -23,11 +23,11 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #36365a; }
 
 /* ── Selection ────────────────────────────────────────────── */
-::selection { background: rgba(196,74,244,0.3); color: #fff; }
+::selection { background: rgba(6,182,212,0.30); color: #fff; }
 
 /* ── Focus ring ───────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid #c44af4;
+  outline: 2px solid #06b6d4;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -47,7 +47,7 @@ body {
 
 /* ── Gradient text ────────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #c44af4 0%, #818cf8 50%, #2dd4bf 100%);
+  background: linear-gradient(135deg, #06b6d4 0%, #2563eb 50%, #2dd4bf 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -55,7 +55,7 @@ body {
 
 /* ── Glow effects ─────────────────────────────────────────── */
 .glow-brand {
-  box-shadow: 0 0 30px rgba(196,74,244,0.25), 0 0 60px rgba(196,74,244,0.1);
+  box-shadow: 0 0 30px rgba(6,182,212,0.25), 0 0 60px rgba(6,182,212,0.10);
 }
 .glow-teal {
   box-shadow: 0 0 30px rgba(45,212,191,0.25);

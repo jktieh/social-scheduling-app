@@ -337,11 +337,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE event_participants;
 -- SEED DATA — Interest Categories
 -- ============================================================
 INSERT INTO interest_categories (name, icon, color, sort_order) VALUES
-  ('Games',         '🎲', '#6366f1', 1),
+  ('Games',         '🎲', '#06b6d4', 1),
   ('Fitness',       '💪', '#f97316', 2),
   ('Outdoors',      '🌲', '#22c55e', 3),
-  ('Arts & Crafts', '🎨', '#ec4899', 4),
-  ('Music',         '🎵', '#a855f7', 5),
+  ('Arts & Crafts', '🎨', '#14b8a6', 4),
+  ('Music',         '🎵', '#2563eb', 5),
   ('Food & Drink',  '🍜', '#eab308', 6),
   ('Learning',      '📚', '#06b6d4', 7),
   ('Tech',          '💻', '#3b82f6', 8),

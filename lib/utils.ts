@@ -33,7 +33,8 @@ export function relativeTime(iso: string): string {
 /** Generate a deterministic avatar URL from user ID */
 export function avatarUrl(id: string, name?: string | null): string {
   const seed = name ? encodeURIComponent(name) : id
-  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${seed}&backgroundColor=6366f1,a855f7,c44af4&backgroundType=gradientLinear`
+  // Avoid purple-ish brand colors; keep avatars in a cyan/teal/blue palette.
+  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${seed}&backgroundColor=14b8a6,06b6d4,2563eb&backgroundType=gradientLinear`
 }
 
 /** Capitalize first letter */
