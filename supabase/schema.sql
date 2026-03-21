@@ -1,198 +1,229 @@
 -- ============================================================
--- ENABLE ROW LEVEL SECURITY
+-- NICHLY - Social Scheduling App
+-- Full Supabase Database Schema (with interests.is_active)
+-- Drop & recreate all tables safely
 -- ============================================================
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE interest_categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE interests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_interests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE availability ENABLE ROW LEVEL SECURITY;
-ALTER TABLE venues ENABLE ROW LEVEL SECURITY;
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_attendees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_matches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_blocks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_reports ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "postgis";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- ============================================================
--- PROFILES
--- Users can select and update their own profile
+-- DROP TABLES (reverse dependency order)
 -- ============================================================
-CREATE POLICY select_own_profiles ON profiles
-  FOR SELECT USING (id = auth.uid());
-
-CREATE POLICY update_own_profiles ON profiles
-  FOR UPDATE USING (id = auth.uid())
-  WITH CHECK (id = auth.uid());
-
--- ============================================================
--- INTEREST CATEGORIES
--- Public table (all users can read)
--- ============================================================
-CREATE POLICY select_interest_categories ON interest_categories
-  FOR SELECT USING (true);
-
--- ============================================================
--- INTERESTS
--- ============================================================
-CREATE POLICY select_active_interests ON interests
-  FOR SELECT USING (is_active = true);
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS event_messages CASCADE;
+DROP TABLE IF EXISTS user_matches CASCADE;
+DROP TABLE IF EXISTS event_attendees CASCADE;
+DROP TABLE IF EXISTS events CASCADE;
+DROP TABLE IF EXISTS venues CASCADE;
+DROP TABLE IF EXISTS availability CASCADE;
+DROP TABLE IF EXISTS user_interests CASCADE;
+DROP TABLE IF EXISTS interests CASCADE;
+DROP TABLE IF EXISTS interest_categories CASCADE;
+DROP TABLE IF EXISTS user_blocks CASCADE;
+DROP TABLE IF EXISTS user_reports CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
 
 -- ============================================================
--- USER INTERESTS
+-- 1. PROFILES
 -- ============================================================
-CREATE POLICY select_own_user_interests ON user_interests
-  FOR SELECT USING (user_id = auth.uid());
+CREATE TABLE profiles (
+  id                  UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username            TEXT UNIQUE NOT NULL,
+  full_name           TEXT,
+  avatar_url          TEXT,
+  bio                 TEXT,
+  date_of_birth       DATE,
+  gender              TEXT CHECK (gender IN ('man', 'woman', 'non_binary', 'prefer_not_to_say', 'other')),
 
-CREATE POLICY insert_own_user_interests ON user_interests
-  FOR INSERT WITH CHECK (user_id = auth.uid());
+  -- Location (Canada)
+  city                TEXT,
+  province            TEXT CHECK (province IN (
+    'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick',
+    'Newfoundland and Labrador', 'Nova Scotia', 'Ontario',
+    'Prince Edward Island', 'Quebec', 'Saskatchewan'
+  )),
+  country             TEXT DEFAULT 'Canada' CHECK (country = 'Canada'),
 
-CREATE POLICY update_own_user_interests ON user_interests
-  FOR UPDATE USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  -- Preferences
+  is_discoverable     BOOLEAN DEFAULT TRUE,
+  show_full_name      BOOLEAN DEFAULT FALSE,
 
-CREATE POLICY delete_own_user_interests ON user_interests
-  FOR DELETE USING (user_id = auth.uid());
+  -- Matching / system
+  match_score_cache   JSONB DEFAULT '{}',
+  last_matched_at     TIMESTAMPTZ,
+  is_verified         BOOLEAN DEFAULT FALSE,
+  is_active           BOOLEAN DEFAULT TRUE,
+  onboarding_complete BOOLEAN DEFAULT FALSE,
 
--- ============================================================
--- AVAILABILITY
--- ============================================================
-CREATE POLICY select_own_availability ON availability
-  FOR SELECT USING (user_id = auth.uid());
+  -- Timestamps
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE POLICY insert_own_availability ON availability
-  FOR INSERT WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY update_own_availability ON availability
-  FOR UPDATE USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY delete_own_availability ON availability
-  FOR DELETE USING (user_id = auth.uid());
-
--- ============================================================
--- VENUES
--- Public table (all users can read)
--- ============================================================
-CREATE POLICY select_venues ON venues
-  FOR SELECT USING (true);
-
--- ============================================================
--- EVENTS
--- Users can see all public events or their own events
--- ============================================================
-CREATE POLICY select_events ON events
-  FOR SELECT USING (is_public = true OR host_id = auth.uid());
-
-CREATE POLICY insert_own_events ON events
-  FOR INSERT WITH CHECK (host_id = auth.uid());
-
-CREATE POLICY update_own_events ON events
-  FOR UPDATE USING (host_id = auth.uid())
-  WITH CHECK (host_id = auth.uid());
-
-CREATE POLICY delete_own_events ON events
-  FOR DELETE USING (host_id = auth.uid());
+CREATE INDEX idx_profiles_username ON profiles(username);
+CREATE INDEX idx_profiles_discoverable ON profiles(is_discoverable) WHERE is_discoverable = TRUE;
 
 -- ============================================================
--- EVENT ATTENDEES
--- Users can manage their own RSVP
+-- 2. INTEREST CATEGORIES
 -- ============================================================
-CREATE POLICY select_own_event_attendees ON event_attendees
-  FOR SELECT USING (user_id = auth.uid());
-
-CREATE POLICY insert_own_event_attendees ON event_attendees
-  FOR INSERT WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY update_own_event_attendees ON event_attendees
-  FOR UPDATE USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY delete_own_event_attendees ON event_attendees
-  FOR DELETE USING (user_id = auth.uid());
+CREATE TABLE interest_categories (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name        TEXT UNIQUE NOT NULL,
+  icon        TEXT,
+  color       TEXT,
+  sort_order  INT DEFAULT 0,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- ============================================================
--- USER MATCHES
--- Users can see matches involving themselves
+-- 3. INTERESTS
 -- ============================================================
-CREATE POLICY select_own_user_matches ON user_matches
-  FOR SELECT USING (user_a_id = auth.uid() OR user_b_id = auth.uid());
+CREATE TABLE interests (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  category_id     UUID REFERENCES interest_categories(id) ON DELETE SET NULL,
+  name            TEXT UNIQUE NOT NULL,
+  slug            TEXT UNIQUE NOT NULL,
+  description     TEXT,
+  icon            TEXT,
+  typical_venue   TEXT,
+  typical_duration_minutes INT DEFAULT 120,
+  is_active       BOOLEAN DEFAULT TRUE,
+  deleted_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE POLICY insert_own_user_matches ON user_matches
-  FOR INSERT WITH CHECK (user_a_id = auth.uid() OR user_b_id = auth.uid());
-
-CREATE POLICY update_own_user_matches ON user_matches
-  FOR UPDATE USING (user_a_id = auth.uid() OR user_b_id = auth.uid())
-  WITH CHECK (user_a_id = auth.uid() OR user_b_id = auth.uid());
-
-CREATE POLICY delete_own_user_matches ON user_matches
-  FOR DELETE USING (user_a_id = auth.uid() OR user_b_id = auth.uid());
-
--- ============================================================
--- USER BLOCKS
--- Users can manage blocks they created
--- ============================================================
-CREATE POLICY select_own_user_blocks ON user_blocks
-  FOR SELECT USING (blocker_id = auth.uid());
-
-CREATE POLICY insert_own_user_blocks ON user_blocks
-  FOR INSERT WITH CHECK (blocker_id = auth.uid());
-
-CREATE POLICY update_own_user_blocks ON user_blocks
-  FOR UPDATE USING (blocker_id = auth.uid())
-  WITH CHECK (blocker_id = auth.uid());
-
-CREATE POLICY delete_own_user_blocks ON user_blocks
-  FOR DELETE USING (blocker_id = auth.uid());
+CREATE INDEX idx_interests_category ON interests(category_id);
+CREATE INDEX idx_interests_slug ON interests(slug);
+CREATE INDEX idx_interests_active ON interests(is_active);
 
 -- ============================================================
--- USER REPORTS
--- Users can see reports they created
+-- 4. USER INTERESTS
 -- ============================================================
-CREATE POLICY select_own_user_reports ON user_reports
-  FOR SELECT USING (reporter_id = auth.uid());
+CREATE TABLE user_interests (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  interest_id UUID REFERENCES interests(id) ON DELETE CASCADE,
+  level       INT DEFAULT 3 CHECK (level BETWEEN 1 AND 5),
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, interest_id)
+);
 
-CREATE POLICY insert_own_user_reports ON user_reports
-  FOR INSERT WITH CHECK (reporter_id = auth.uid());
-
-CREATE POLICY update_own_user_reports ON user_reports
-  FOR UPDATE USING (reporter_id = auth.uid())
-  WITH CHECK (reporter_id = auth.uid());
-
-CREATE POLICY delete_own_user_reports ON user_reports
-  FOR DELETE USING (reporter_id = auth.uid());
+CREATE INDEX idx_user_interests_user ON user_interests(user_id);
+CREATE INDEX idx_user_interests_interest ON user_interests(interest_id);
 
 -- ============================================================
--- EVENT MESSAGES
--- Users can see and manage their own messages
+-- 5. AVAILABILITY
 -- ============================================================
-CREATE POLICY select_own_event_messages ON event_messages
-  FOR SELECT USING (user_id = auth.uid());
+CREATE TABLE availability (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  day_of_week INT CHECK (day_of_week BETWEEN 0 AND 6),  -- 0 = Sunday
+  start_time  TIME NOT NULL,
+  end_time    TIME NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE POLICY insert_own_event_messages ON event_messages
-  FOR INSERT WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY update_own_event_messages ON event_messages
-  FOR UPDATE USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY delete_own_event_messages ON event_messages
-  FOR DELETE USING (user_id = auth.uid());
+CREATE INDEX idx_availability_user ON availability(user_id);
+CREATE INDEX idx_availability_day ON availability(day_of_week);
 
 -- ============================================================
--- NOTIFICATIONS
--- Users can only see their own notifications
+-- 6. VENUES
 -- ============================================================
-CREATE POLICY select_own_notifications ON notifications
-  FOR SELECT USING (user_id = auth.uid());
+CREATE TABLE venues (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name        TEXT NOT NULL,
+  address     TEXT,
+  city        TEXT,
+  province    TEXT,
+  country     TEXT DEFAULT 'Canada',
+  description TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE POLICY insert_own_notifications ON notifications
-  FOR INSERT WITH CHECK (user_id = auth.uid());
+-- ============================================================
+-- 7. EVENTS
+-- ============================================================
+CREATE TABLE events (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  host_id     UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  venue_id    UUID REFERENCES venues(id) ON DELETE SET NULL,
+  title       TEXT NOT NULL,
+  description TEXT,
+  start_time  TIMESTAMPTZ NOT NULL,
+  end_time    TIMESTAMPTZ NOT NULL,
+  max_attendees INT DEFAULT 20,
+  is_public   BOOLEAN DEFAULT TRUE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE POLICY update_own_notifications ON notifications
-  FOR UPDATE USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+-- ============================================================
+-- 8. EVENT ATTENDEES
+-- ============================================================
+CREATE TABLE event_attendees (
+  id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id  UUID REFERENCES events(id) ON DELETE CASCADE,
+  user_id   UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  status    TEXT CHECK (status IN ('going', 'interested', 'declined')) DEFAULT 'going',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(event_id, user_id)
+);
 
-CREATE POLICY delete_own_notifications ON notifications
-  FOR DELETE USING (user_id = auth.uid());
+-- ============================================================
+-- 9. USER MATCHES
+-- ============================================================
+CREATE TABLE user_matches (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_a_id    UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  user_b_id    UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  match_score  INT DEFAULT 0,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_a_id, user_b_id)
+);
+
+-- ============================================================
+-- 10. USER BLOCKS
+-- ============================================================
+CREATE TABLE user_blocks (
+  id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  blocker_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  blocked_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(blocker_id, blocked_id)
+);
+
+-- ============================================================
+-- 11. USER REPORTS
+-- ============================================================
+CREATE TABLE user_reports (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reporter_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  reported_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  reason      TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 12. EVENT MESSAGES
+-- ============================================================
+CREATE TABLE event_messages (
+  id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id  UUID REFERENCES events(id) ON DELETE CASCADE,
+  user_id   UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  message   TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 13. NOTIFICATIONS
+-- ============================================================
+CREATE TABLE notifications (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL,
+  message     TEXT NOT NULL,
+  read        BOOLEAN DEFAULT FALSE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
