@@ -16,18 +16,21 @@ export default async function EventPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Fetch event
-  const { data: event } = await supabase
+  // Fetch event (explicit FKs for venue/confirmed_venue to avoid ambiguity)
+  const { data: event, error: eventError } = await supabase
     .from('events')
     .select(`
       *,
       interest:interests(id, name, icon, typical_duration_minutes),
-      venue:venues(id, name, address, city, rating, price_range),
-      confirmed_venue:venues!confirmed_venue_id(id, name, address, city)
+      venue:venues!events_venue_id_fkey(id, name, address, city, rating, price_range),
+      confirmed_venue:venues!events_confirmed_venue_id_fkey(id, name, address, city)
     `)
     .eq('id', id)
     .single()
 
+  if (eventError) {
+    console.error('[events/[id]] Event fetch error:', eventError)
+  }
   if (!event) notFound()
 
   // Fetch participants

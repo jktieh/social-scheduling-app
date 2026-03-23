@@ -5,6 +5,14 @@ import EventCard from '@/components/EventCard'
 import { Sparkles, CalendarCheck, ArrowRight, Bell } from 'lucide-react'
 import type { Event, ParticipantStatus } from '@/types'
 
+export const dynamic = 'force-dynamic'
+
+const eventSelect = `
+  *,
+  interest:interests(id, name, icon, category_id),
+  venue:venues!events_venue_id_fkey(id, name, address, city)
+`
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -32,25 +40,28 @@ export default async function DashboardPage() {
 
   let myEvents: Event[] = []
   if (participatingIds.length > 0) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('events')
-      .select('*, interest:interests(id,name,icon), venue:venues(id,name,city)')
+      .select(eventSelect)
       .in('id', participatingIds)
       .neq('status', 'cancelled')
       .order('proposed_start', { ascending: true })
       .limit(6)
-    myEvents = (data as Event[]) ?? []
+    if (!error) myEvents = (data as Event[]) ?? []
   }
 
   // Discover — open events not in user's list
-  const { data: discoverEvents } = await supabase
+  let discoverQuery = supabase
     .from('events')
-    .select('*, interest:interests(id,name,icon), venue:venues(id,name,city)')
+    .select(eventSelect)
     .eq('status', 'open')
     .gte('proposed_start', new Date().toISOString())
-    .not('id', 'in', `(${participatingIds.join(',') || 'null'})`)
     .order('interested_count', { ascending: false })
     .limit(6)
+  if (participatingIds.length > 0) {
+    discoverQuery = discoverQuery.not('id', 'in', `(${participatingIds.join(',')})`)
+  }
+  const { data: discoverEvents } = await discoverQuery
 
   // Unread notifications
   const { count: unreadCount } = await supabase
@@ -84,10 +95,13 @@ export default async function DashboardPage() {
           </div>
 
           {(unreadCount ?? 0) > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-brand-600/20 border border-brand-600/30 rounded-xl">
+            <Link
+              href="/events?status=mine"
+              className="flex items-center gap-2 px-4 py-2 bg-brand-600/20 border border-brand-600/30 rounded-xl hover:bg-brand-600/30 transition-colors"
+            >
               <Bell size={14} className="text-brand-400" />
               <span className="text-brand-300 text-sm font-medium">{unreadCount} new notification{unreadCount !== 1 ? 's' : ''}</span>
-            </div>
+            </Link>
           )}
         </div>
       </div>
@@ -104,7 +118,7 @@ export default async function DashboardPage() {
               See all <ArrowRight size={13} />
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {myEvents.map(event => (
               <EventCard key={event.id} event={event} userStatus={statusMap[event.id]} />
             ))}
@@ -127,7 +141,7 @@ export default async function DashboardPage() {
           <p className="text-white/40 text-sm mb-4">
             Express interest — when enough people join, the event is confirmed automatically.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(discoverEvents as Event[]).map(event => (
               <EventCard key={event.id} event={event} />
             ))}
@@ -142,10 +156,10 @@ export default async function DashboardPage() {
             No events yet
           </h3>
           <p className="text-white/40 mb-6">
-            Complete your profile to get matched with events in your city.
+            Browse events below and tap &quot;I&apos;m interested&quot; to get matched. Complete your profile to discover events in your city.
           </p>
-          <Link href="/onboarding" className="btn-primary inline-flex items-center gap-2">
-            Set your interests →
+          <Link href="/events" className="btn-primary inline-flex items-center gap-2">
+            Browse events →
           </Link>
         </div>
       )}

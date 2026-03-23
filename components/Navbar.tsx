@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Home, Calendar, User, LogOut, Menu, X } from 'lucide-react'
+import NotificationBell from './NotificationBell'
 
 const NAV = [
   { href: '/dashboard', label: 'Home',   icon: Home },
@@ -97,8 +98,9 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
           ))}
         </nav>
 
-        {/* Sign out */}
+        {/* Notifications + Sign out */}
         <div className="hidden md:flex items-center gap-2">
+          <NotificationBell variant={variant} />
           <button
             onClick={handleSignOut}
             className={[
@@ -113,13 +115,16 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
           </button>
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setOpen(!open)}
-          className={isLight ? 'md:hidden p-2 text-white/70 hover:text-white' : 'md:hidden btn-ghost p-2'}
-        >
-          {open ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {/* Mobile: notifications + menu button */}
+        <div className="md:hidden flex items-center gap-1">
+          <NotificationBell variant={variant} />
+          <button
+            onClick={() => setOpen(!open)}
+            className={isLight ? 'p-2 text-white/70 hover:text-white' : 'btn-ghost p-2'}
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}

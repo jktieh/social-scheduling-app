@@ -1,8 +1,11 @@
 // app/events/page.tsx
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import EventCard from '@/components/EventCard'
 import type { Event, InterestCategory, ParticipantStatus } from '@/types'
+
+export const dynamic = 'force-dynamic'
 
 interface Props {
   searchParams: Promise<{ category?: string; status?: string }>
@@ -62,7 +65,7 @@ export default async function EventsPage({ searchParams }: Props) {
 
   const { data: events, error: eventsError } = await query
   if (eventsError) console.error('Error fetching events:', eventsError)
-  else console.log('Fetched events:', events)
+  else console.log('Fetched events:', events?.length ?? 0, 'items')
 
   // Filter by category client-side
   const filtered = category && category !== 'all'
@@ -109,16 +112,21 @@ export default async function EventsPage({ searchParams }: Props) {
       </div>
 
       {/* Status filter */}
-      <div className="flex gap-2 mb-6">
-        <StatusTab href="/events" label="All Events" active={!status} />
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex gap-2">
+          <StatusTab href="/events" label="All Events" active={!status} />
         <StatusTab href="/events?status=open" label="Open" active={status === 'open'} />
         <StatusTab href="/events?status=confirmed" label="Confirmed" active={status === 'confirmed'} />
         <StatusTab href="/events?status=mine" label="My Events" active={status === 'mine'} />
+        </div>
+        {filtered.length > 0 && (
+          <span className="text-sm text-white/40">{filtered.length} event{filtered.length !== 1 ? 's' : ''}</span>
+        )}
       </div>
 
       {/* Events grid */}
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {(filtered as Event[]).map(event => (
             <EventCard
               key={event.id}
@@ -136,8 +144,15 @@ export default async function EventsPage({ searchParams }: Props) {
           <p className="text-white/40">
             {status === 'mine'
               ? "You haven't expressed interest in any events yet."
-              : 'Try a different filter or check back soon!'}
+              : eventsError
+                ? `Database error: ${eventsError.message}. Check that you're using schema_mvp.sql (events need proposed_start, status, interest_id).`
+                : 'Try a different filter or check back soon!'}
           </p>
+          {eventsError && process.env.NODE_ENV === 'development' && (
+            <pre className="mt-4 p-4 text-left text-xs text-red-400 bg-red-950/30 rounded-lg overflow-auto max-h-40">
+              {JSON.stringify(eventsError, null, 2)}
+            </pre>
+          )}
         </div>
       )}
     </div>
@@ -146,7 +161,7 @@ export default async function EventsPage({ searchParams }: Props) {
 
 function CategoryTab({ href, label, icon, active }: { href: string; label: string; icon: string; active: boolean }) {
   return (
-    <a
+    <Link
       href={href}
       className={[
         'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all',
@@ -157,13 +172,13 @@ function CategoryTab({ href, label, icon, active }: { href: string; label: strin
     >
       {icon && <span>{icon}</span>}
       {label}
-    </a>
+    </Link>
   )
 }
 
 function StatusTab({ href, label, active }: { href: string; label: string; active: boolean }) {
   return (
-    <a
+    <Link
       href={href}
       className={[
         'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
@@ -173,6 +188,6 @@ function StatusTab({ href, label, active }: { href: string; label: string; activ
       ].join(' ')}
     >
       {label}
-    </a>
+    </Link>
   )
 }

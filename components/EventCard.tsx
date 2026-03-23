@@ -8,19 +8,23 @@ interface Props {
 }
 
 export default function EventCard({ event: e, userStatus }: Props) {
-  const percent = Math.min((e.interested_count / e.threshold_count) * 100, 100)
-  const remaining = Math.max(e.threshold_count - e.interested_count, 0)
-  const isConfirmed = e.status === 'confirmed'
-  const isOpen = e.status === 'open'
+  const interestedCount = e.interested_count ?? 0
+  const thresholdCount = e.threshold_count ?? 4
+  const percent = thresholdCount > 0 ? Math.min((interestedCount / thresholdCount) * 100, 100) : 0
+  const remaining = Math.max(thresholdCount - interestedCount, 0)
+  const status = e.status ?? 'open'
+  const isConfirmed = status === 'confirmed'
+  const isOpen = status === 'open'
 
-  const displayTime = isConfirmed && e.confirmed_start ? e.confirmed_start : e.proposed_start
+  const displayTime = isConfirmed && e.confirmed_start ? e.confirmed_start : (e.proposed_start ?? new Date().toISOString())
 
-  const statusConfig = {
+  const statusConfig: Record<string, { label: string; cls: string }> = {
     open: { label: 'Gathering Interest', cls: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
     confirmed: { label: 'Confirmed! 🎉', cls: 'text-teal-400 bg-teal-400/10 border-teal-400/20' },
     completed: { label: 'Completed', cls: 'text-white/30 bg-white/5 border-white/10' },
     cancelled: { label: 'Cancelled', cls: 'text-red-400 bg-red-400/10 border-red-400/20' },
-  }[e.status]
+  }
+  const statusDisplay = statusConfig[status] ?? statusConfig.open
 
   const rsvpBadge = userStatus && {
     interested: { label: 'Interested', icon: <Hourglass size={11} />, cls: 'text-amber-400 bg-amber-400/10' },
@@ -48,8 +52,8 @@ export default function EventCard({ event: e, userStatus }: Props) {
           </div>
 
           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-            <span className={`text-xs px-2.5 py-1 rounded-full border font-medium whitespace-nowrap ${statusConfig.cls}`}>
-              {statusConfig.label}
+            <span className={`text-xs px-2.5 py-1 rounded-full border font-medium whitespace-nowrap ${statusDisplay.cls}`}>
+              {statusDisplay.label}
             </span>
             {rsvpBadge && (
               <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${rsvpBadge.cls}`}>
@@ -81,8 +85,8 @@ export default function EventCard({ event: e, userStatus }: Props) {
             <Users size={13} className="flex-shrink-0 text-accent-indigo" />
             <span>
               {isOpen
-                ? `${e.interested_count} interested · ${remaining > 0 ? `${remaining} more to confirm` : 'threshold met!'}`
-                : `${e.interested_count} going`}
+                ? `${interestedCount} interested · ${remaining > 0 ? `${remaining} more to confirm` : 'threshold met!'}`
+                : `${interestedCount} going`}
             </span>
           </div>
         </div>
@@ -102,7 +106,7 @@ export default function EventCard({ event: e, userStatus }: Props) {
               />
             </div>
             <div className="flex justify-between text-xs text-white/20">
-              <span>{e.interested_count}/{e.threshold_count} needed</span>
+              <span>{interestedCount}/{thresholdCount} needed</span>
               <span>{e.max_attendees} max</span>
             </div>
           </div>
