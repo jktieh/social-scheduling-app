@@ -135,6 +135,7 @@ CREATE INDEX idx_availability_day ON availability(day_of_week);
 CREATE TABLE venues (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name        TEXT NOT NULL,
+  venue_type  TEXT,
   address     TEXT,
   city        TEXT,
   province    TEXT,
@@ -142,6 +143,9 @@ CREATE TABLE venues (
   description TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX idx_venues_city ON venues(city);
+CREATE INDEX idx_venues_type ON venues(venue_type);
 
 -- ============================================================
 -- 7. EVENTS

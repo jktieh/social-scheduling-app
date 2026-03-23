@@ -10,6 +10,7 @@ export interface Profile {
   latitude: number | null
   longitude: number | null
   onboarding_complete: boolean
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -30,6 +31,7 @@ export interface Interest {
   icon: string | null
   typical_venue: string | null
   typical_duration_minutes: number
+  is_active: boolean
   category?: InterestCategory
 }
 
@@ -44,8 +46,8 @@ export interface UserInterest {
 export interface Availability {
   id: string
   user_id: string
-  day_of_week: number   // 0 = Sunday … 6 = Saturday
-  start_time: string    // "HH:MM"
+  day_of_week: number
+  start_time: string
   end_time: string
 }
 
@@ -62,41 +64,59 @@ export interface Venue {
   rating: number | null
 }
 
+// ─── Event ────────────────────────────────────────────────────────────────────
+
+export type EventStatus = 'open' | 'confirmed' | 'completed' | 'cancelled'
+
 export interface Event {
   id: string
-  title: string
-  description: string | null
   interest_id: string | null
   venue_id: string | null
-  starts_at: string
-  ends_at: string | null
-  min_attendees: number
+  created_by: string | null
+
+  title: string
+  description: string | null
+  cover_image_url: string | null
+
+  proposed_start: string
+  proposed_end: string | null
+  confirmed_start: string | null
+  confirmed_end: string | null
+  confirmed_venue_id: string | null
+
+  threshold_count: number
+  interested_count: number
   max_attendees: number
-  current_attendees: number
+
   status: EventStatus
   is_auto_generated: boolean
-  cover_image_url: string | null
+  city: string | null
+
   created_at: string
+  updated_at: string
+
   // Joined
   interest?: Interest
   venue?: Venue
-  participants?: EventParticipant[]
+  confirmed_venue?: Venue
 }
 
-export type EventStatus = 'pending' | 'confirmed' | 'full' | 'cancelled' | 'completed'
+// ─── Event Interest (participant) ─────────────────────────────────────────────
 
-export type ParticipantStatus = 'invited' | 'confirmed' | 'declined' | 'attended' | 'no_show'
+export type ParticipantStatus = 'interested' | 'confirmed' | 'declined' | 'attended' | 'no_show'
 
-export interface EventParticipant {
+export interface EventInterest {
   id: string
   event_id: string
   user_id: string
   status: ParticipantStatus
   is_host: boolean
+  joined_at: string
   responded_at: string | null
-  created_at: string
   profile?: Profile
 }
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
 
 export interface EventMessage {
   id: string
@@ -107,6 +127,39 @@ export interface EventMessage {
   created_at: string
   profile?: Profile
 }
+
+// ─── Setting Proposals & Votes ────────────────────────────────────────────────
+
+export type ProposalType = 'time' | 'venue'
+export type ProposalStatus = 'open' | 'accepted' | 'rejected'
+
+export interface EventSettingProposal {
+  id: string
+  event_id: string
+  proposed_by: string
+  type: ProposalType
+  new_start: string | null
+  new_end: string | null
+  new_venue_id: string | null
+  new_venue_name: string | null
+  votes_for: number
+  votes_against: number
+  status: ProposalStatus
+  created_at: string
+  resolved_at: string | null
+  profile?: Profile
+  new_venue?: Venue
+}
+
+export interface EventSettingVote {
+  id: string
+  proposal_id: string
+  user_id: string
+  vote: boolean
+  created_at: string
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
 
 export interface Notification {
   id: string
@@ -119,11 +172,14 @@ export interface Notification {
   created_at: string
 }
 
-// ─── API / UI helpers ────────────────────────────────────────────────────────
+// ─── UI Helpers ───────────────────────────────────────────────────────────────
 
-export interface DashboardEvent extends Event {
-  user_status: ParticipantStatus | null
-}
-
-export const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+export const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 export const DAY_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] as const
+
+export const STATUS_LABELS: Record<EventStatus, string> = {
+  open: 'Gathering Interest',
+  confirmed: 'Confirmed',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}

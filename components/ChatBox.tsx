@@ -15,11 +15,10 @@ interface Props {
 export default function ChatBox({ eventId, currentUser }: Props) {
   const supabase = createClient()
   const [messages, setMessages] = useState<EventMessage[]>([])
-  const [input, setInput]       = useState('')
-  const [sending, setSending]   = useState(false)
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // ── Load messages ────────────────────────────────────────────
   useEffect(() => {
     supabase
       .from('event_messages')
@@ -29,7 +28,6 @@ export default function ChatBox({ eventId, currentUser }: Props) {
       .then(({ data }) => { if (data) setMessages(data as EventMessage[]) })
   }, [eventId])
 
-  // ── Subscribe to realtime new messages ───────────────────────
   useEffect(() => {
     const channel = supabase
       .channel(`event-chat-${eventId}`)
@@ -37,7 +35,6 @@ export default function ChatBox({ eventId, currentUser }: Props) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'event_messages', filter: `event_id=eq.${eventId}` },
         async (payload) => {
-          // Fetch the full message with profile
           const { data } = await supabase
             .from('event_messages')
             .select('*, profile:profiles(id, full_name, avatar_url, username)')
@@ -51,26 +48,21 @@ export default function ChatBox({ eventId, currentUser }: Props) {
     return () => { supabase.removeChannel(channel) }
   }, [eventId])
 
-  // ── Scroll to bottom on new message ─────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // ── Send message ─────────────────────────────────────────────
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault()
     const text = input.trim()
     if (!text || sending) return
-
     setSending(true)
     setInput('')
-
     await supabase.from('event_messages').insert({
       event_id: eventId,
-      user_id:  currentUser.id,
-      content:  text,
+      user_id: currentUser.id,
+      content: text,
     })
-
     setSending(false)
   }
 
@@ -79,12 +71,11 @@ export default function ChatBox({ eventId, currentUser }: Props) {
   }
 
   return (
-    <div className="card flex flex-col h-[480px]">
+    <div className="card flex flex-col h-[500px]">
       <h3 className="font-bold mb-4 text-white/80" style={{ fontFamily: 'var(--font-display)' }}>
         Group Chat
       </h3>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
         {messages.length === 0 && (
           <div className="text-center text-white/30 text-sm py-8">
@@ -96,7 +87,7 @@ export default function ChatBox({ eventId, currentUser }: Props) {
           const isMe = msg.user_id === currentUser.id
           if (msg.is_system) {
             return (
-              <div key={msg.id} className="text-center text-xs text-white/30 py-1">
+              <div key={msg.id} className="text-center text-xs text-white/30 py-1 px-4 glass rounded-full mx-auto w-fit max-w-sm">
                 {msg.content}
               </div>
             )
@@ -104,7 +95,6 @@ export default function ChatBox({ eventId, currentUser }: Props) {
 
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
-              {/* Avatar */}
               <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
                 <Image
                   src={msg.profile?.avatar_url || avatarUrl(msg.user_id!, msg.profile?.full_name)}
@@ -114,7 +104,6 @@ export default function ChatBox({ eventId, currentUser }: Props) {
                   unoptimized
                 />
               </div>
-
               <div className={`max-w-[75%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
                 {!isMe && (
                   <span className="text-xs text-white/30 mb-1 ml-1">
@@ -138,7 +127,6 @@ export default function ChatBox({ eventId, currentUser }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <form onSubmit={sendMessage} className="flex gap-2 mt-4">
         <input
           type="text"
