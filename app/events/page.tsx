@@ -1,3 +1,4 @@
+// app/events/page.tsx
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import EventCard from '@/components/EventCard'
@@ -11,31 +12,40 @@ export default async function EventsPage({ searchParams }: Props) {
   const { category, status } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
   if (!user) redirect('/login')
 
-  // Fetch categories for filter tabs
-  const { data: categories } = await supabase
+  console.log('Authenticated user:', user)
+
+  // Fetch categories
+  const { data: categories, error: catError } = await supabase
     .from('interest_categories')
     .select('*')
     .order('sort_order')
 
-  // Fetch user's participations for status badges
-  const { data: participations } = await supabase
+  if (catError) console.error('Error fetching categories:', catError)
+  else console.log('Fetched categories:', categories)
+
+  // Fetch user's participations
+  const { data: participations, error: partError } = await supabase
     .from('event_interests')
     .select('event_id, status')
     .eq('user_id', user.id)
+
+  if (partError) console.error('Error fetching participations:', partError)
+  else console.log('Fetched participations:', participations)
 
   const statusMap = Object.fromEntries(
     participations?.map(p => [p.event_id, p.status]) ?? []
   ) as Record<string, ParticipantStatus>
 
-  // Build event query
+  // Build events query (use explicit FK for venue)
   let query = supabase
     .from('events')
     .select(`
       *,
       interest:interests(id, name, icon, category_id),
-      venue:venues(id, name, address, city)
+      venue:venues!events_venue_id_fkey(id, name, address, city)
     `)
     .neq('status', 'cancelled')
     .gte('proposed_start', new Date().toISOString())
@@ -50,14 +60,13 @@ export default async function EventsPage({ searchParams }: Props) {
     else query = query.eq('id', 'none') // return empty
   }
 
-  const { data: events } = await query
+  const { data: events, error: eventsError } = await query
+  if (eventsError) console.error('Error fetching events:', eventsError)
+  else console.log('Fetched events:', events)
 
-  // Filter by category client-side (interest join makes it tricky in one query)
+  // Filter by category client-side
   const filtered = category && category !== 'all'
-    ? events?.filter(e => {
-        const cat = (categories as InterestCategory[])?.find(c => c.id === category)
-        return e.interest?.category_id === category
-      }) ?? []
+    ? events?.filter(e => e.interest?.category_id === category) ?? []
     : events ?? []
 
   return (
