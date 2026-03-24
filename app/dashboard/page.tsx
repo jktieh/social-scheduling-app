@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import EventCard from '@/components/EventCard'
 import { Sparkles, CalendarCheck, ArrowRight, Bell } from 'lucide-react'
+import { eventMatchesAvailability } from '@/lib/utils'
 import type { Event, ParticipantStatus } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -38,6 +39,17 @@ export default async function DashboardPage() {
     participations?.map(p => [p.event_id, p.status]) ?? []
   ) as Record<string, ParticipantStatus>
 
+  // User's interests and availability (for personalized discover)
+  const [
+    { data: userInterests },
+    { data: availability },
+  ] = await Promise.all([
+    supabase.from('user_interests').select('interest_id').eq('user_id', user.id),
+    supabase.from('availability').select('day_of_week, start_time, end_time').eq('user_id', user.id),
+  ])
+  const interestIds = userInterests?.map(ui => ui.interest_id) ?? []
+  const availSlots = availability ?? []
+
   let myEvents: Event[] = []
   if (participatingIds.length > 0) {
     const { data, error } = await supabase
@@ -50,18 +62,27 @@ export default async function DashboardPage() {
     if (!error) myEvents = (data as Event[]) ?? []
   }
 
-  // Discover — open events not in user's list
-  let discoverQuery = supabase
-    .from('events')
-    .select(eventSelect)
-    .eq('status', 'open')
-    .gte('proposed_start', new Date().toISOString())
-    .order('interested_count', { ascending: false })
-    .limit(6)
-  if (participatingIds.length > 0) {
-    discoverQuery = discoverQuery.not('id', 'in', `(${participatingIds.join(',')})`)
+  // Discover — open events matching user's interests, city, and availability
+  let discoverEvents: Event[] | null = null
+  const canDiscover = profile?.city?.trim() && interestIds.length > 0 && availSlots.length > 0
+  if (canDiscover) {
+    let discoverQuery = supabase
+      .from('events')
+      .select(eventSelect)
+      .eq('status', 'open')
+      .gte('proposed_start', new Date().toISOString())
+      .ilike('city', profile!.city!.trim())
+      .in('interest_id', interestIds)
+      .order('interested_count', { ascending: false })
+      .limit(30)
+    if (participatingIds.length > 0) {
+      discoverQuery = discoverQuery.not('id', 'in', `(${participatingIds.join(',')})`)
+    }
+    const { data: raw } = await discoverQuery
+    discoverEvents = (raw ?? [])
+      .filter(e => eventMatchesAvailability(e.proposed_start, availSlots))
+      .slice(0, 6) as Event[]
   }
-  const { data: discoverEvents } = await discoverQuery
 
   // Unread notifications
   const { count: unreadCount } = await supabase
@@ -139,7 +160,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <p className="text-white/40 text-sm mb-4">
-            Express interest — when enough people join, the event is confirmed automatically.
+            Personalized for your interests, city, and availability. Express interest — when enough people join, the event is confirmed.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(discoverEvents as Event[]).map(event => (
@@ -156,7 +177,9 @@ export default async function DashboardPage() {
             No events yet
           </h3>
           <p className="text-white/40 mb-6">
-            Browse events below and tap &quot;I&apos;m interested&quot; to get matched. Complete your profile to discover events in your city.
+            {canDiscover
+              ? "No events match your interests, city, and availability right now. Browse all events to explore."
+              : "Complete your profile with city, interests, and availability to get personalized event recommendations."}
           </p>
           <Link href="/events" className="btn-primary inline-flex items-center gap-2">
             Browse events →

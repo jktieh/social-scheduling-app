@@ -52,6 +52,26 @@ export const CANADIAN_CITIES = [
 export const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 export const DAY_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 
+/** Check if event's proposed_start falls within any availability slot (day + time). */
+export function eventMatchesAvailability(
+  proposedStart: string,
+  slots: { day_of_week: number; start_time: string; end_time: string }[]
+): boolean {
+  if (slots.length === 0) return false
+  const d = new Date(proposedStart)
+  const day = d.getDay()
+  const eventMins = d.getHours() * 60 + d.getMinutes()
+  for (const slot of slots) {
+    if (slot.day_of_week !== day) continue
+    const [sh, sm] = slot.start_time.split(':').map(Number)
+    const [eh, em] = slot.end_time.split(':').map(Number)
+    const startMins = sh * 60 + (sm || 0)
+    const endMins = eh * 60 + (em || 0)
+    if (eventMins >= startMins && eventMins <= endMins) return true
+  }
+  return false
+}
+
 /** Format "HH:MM" → "7:00 PM" */
 export function formatTime(t: string): string {
   const [h, m] = t.split(':').map(Number)
