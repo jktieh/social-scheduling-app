@@ -54,7 +54,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/')
     router.refresh()
   }
 
@@ -68,10 +68,10 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
       ].join(' ')}
     >
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo - left */}
         <Link
           href={user ? '/dashboard' : '/'}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 flex-shrink-0"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           <LogoMark className={isLight ? 'text-white' : 'text-brand-400'} />
@@ -85,27 +85,44 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
           </span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          {user ? NAV.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={[
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
-                path.startsWith(href)
-                  ? isLight
-                    ? 'bg-white/10 text-white border border-white/20'
-                    : 'bg-brand-600/20 text-brand-300 border border-brand-600/30'
-                  : isLight
+        {/* Nav items - right */}
+        <div className="hidden md:flex items-center gap-2 ml-auto">
+          {user ? (
+            <>
+              {NAV.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={[
+                    'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
+                    path.startsWith(href)
+                      ? isLight
+                        ? 'bg-white/10 text-white border border-white/20'
+                        : 'bg-brand-600/20 text-brand-300 border border-brand-600/30'
+                      : isLight
+                        ? 'text-white/70 hover:text-white hover:bg-white/5'
+                        : 'text-white/50 hover:text-white hover:bg-white/5',
+                  ].join(' ')}
+                >
+                  <Icon size={15} />
+                  {label}
+                </Link>
+              ))}
+              <NotificationBell variant={variant} />
+              <button
+                onClick={handleSignOut}
+                className={[
+                  'flex items-center gap-2 text-sm px-4 py-2 rounded-xl',
+                  isLight
                     ? 'text-white/70 hover:text-white hover:bg-white/5'
-                    : 'text-white/50 hover:text-white hover:bg-white/5',
-              ].join(' ')}
-            >
-              <Icon size={15} />
-              {label}
-            </Link>
-          )) : (
+                    : 'btn-ghost',
+                ].join(' ')}
+              >
+                <LogOut size={15} />
+                Sign out
+              </button>
+            </>
+          ) : (
             <>
               <Link
                 href="/login"
@@ -127,29 +144,10 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
               </Link>
             </>
           )}
-        </nav>
-
-        {/* Notifications + Sign out (only when signed in) */}
-        <div className="hidden md:flex items-center gap-2">
-          {user && <NotificationBell variant={variant} />}
-          {user ? (
-          <button
-            onClick={handleSignOut}
-            className={[
-              'flex items-center gap-2 text-sm',
-              isLight
-                ? 'text-white/70 hover:text-white'
-                : 'btn-ghost',
-            ].join(' ')}
-          >
-            <LogOut size={15} />
-            Sign out
-          </button>
-          ) : null}
         </div>
 
-        {/* Mobile: notifications + menu button */}
-        <div className="md:hidden flex items-center gap-1">
+        {/* Mobile: menu button */}
+        <div className="md:hidden flex items-center gap-1 ml-auto">
           {user && <NotificationBell variant={variant} />}
           <button
             onClick={() => setOpen(!open)}
