@@ -2,9 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { avatarUrl, DAY_SHORT, formatTime } from '@/lib/utils'
-import { MapPin, Edit3, Calendar } from 'lucide-react'
-import type { UserInterest, Availability } from '@/types'
+import { avatarUrl } from '@/lib/utils'
+import { MapPin, Edit3 } from 'lucide-react'
+import type { UserInterest, Availability, Interest, InterestCategory } from '@/types'
+import ProfileInterestsEditor from '@/components/ProfileInterestsEditor'
+import ProfileAvailabilityEditor from '@/components/ProfileAvailabilityEditor'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -17,16 +19,24 @@ export default async function ProfilePage() {
     .eq('id', user.id)
     .single()
 
-  const { data: userInterests } = await supabase
-    .from('user_interests')
-    .select('*, interest:interests(id,name,icon,category_id)')
-    .eq('user_id', user.id)
-
-  const { data: availability } = await supabase
-    .from('availability')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('day_of_week')
+  const [
+    { data: userInterests },
+    { data: availability },
+    { data: categories },
+    { data: interests },
+  ] = await Promise.all([
+    supabase
+      .from('user_interests')
+      .select('*, interest:interests(id,name,icon,category_id)')
+      .eq('user_id', user.id),
+    supabase
+      .from('availability')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('day_of_week'),
+    supabase.from('interest_categories').select('*').order('sort_order'),
+    supabase.from('interests').select('*').eq('is_active', true),
+  ])
 
   if (!profile) redirect('/onboarding')
 
@@ -72,44 +82,14 @@ export default async function ProfilePage() {
       </div>
 
       {/* Interests */}
-      <div className="card mb-6">
-        <h2 className="font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>Interests</h2>
-        {userInterests && userInterests.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {(userInterests as UserInterest[]).map(ui => (
-              <div key={ui.id} className="flex items-center gap-2 glass px-4 py-2 rounded-full text-sm">
-                <span>{ui.interest?.icon}</span>
-                <span className="text-white/80">{ui.interest?.name}</span>
-                <span className="text-brand-400 text-xs">{'●'.repeat(ui.level)}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-white/30 text-sm">No interests set.</p>
-        )}
-      </div>
+      <ProfileInterestsEditor
+        initialUserInterests={(userInterests ?? []) as UserInterest[]}
+        categories={(categories ?? []) as InterestCategory[]}
+        interests={(interests ?? []) as Interest[]}
+      />
 
       {/* Availability */}
-      <div className="card">
-        <h2 className="font-bold mb-4 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
-          <Calendar size={18} className="text-brand-400" />
-          Weekly Availability
-        </h2>
-        {availability && availability.length > 0 ? (
-          <div className="space-y-2">
-            {(availability as Availability[]).map(slot => (
-              <div key={slot.id} className="flex items-center justify-between glass rounded-xl px-4 py-3">
-                <span className="font-medium w-10">{DAY_SHORT[slot.day_of_week]}</span>
-                <span className="text-white/50 text-sm">
-                  {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-white/30 text-sm">No availability set.</p>
-        )}
-      </div>
+      <ProfileAvailabilityEditor initialAvailability={(availability ?? []) as Availability[]} />
     </div>
   )
 }
