@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Home, Calendar, User, LogOut, Menu, X } from 'lucide-react'
 import NotificationBell from './NotificationBell'
@@ -41,11 +41,21 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
   const router   = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
+  const [user, setUser] = useState<{ id: string } | null>(null)
   const isLight = variant === 'light'
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) =>
+      setUser(session?.user ?? null)
+    )
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/login')
+    router.refresh()
   }
 
   return (
@@ -60,7 +70,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link
-          href="/dashboard"
+          href={user ? '/dashboard' : '/'}
           className="flex items-center gap-2"
           style={{ fontFamily: 'var(--font-display)' }}
         >
@@ -77,7 +87,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
-          {NAV.map(({ href, label, icon: Icon }) => (
+          {user ? NAV.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -95,12 +105,34 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
               <Icon size={15} />
               {label}
             </Link>
-          ))}
+          )) : (
+            <>
+              <Link
+                href="/login"
+                className={[
+                  'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
+                  isLight ? 'text-white/70 hover:text-white hover:bg-white/5' : 'text-white/50 hover:text-white hover:bg-white/5',
+                ].join(' ')}
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className={[
+                  'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
+                  isLight ? 'bg-white/10 text-white border border-white/20 hover:bg-white/15' : 'btn-primary',
+                ].join(' ')}
+              >
+                Get started
+              </Link>
+            </>
+          )}
         </nav>
 
-        {/* Notifications + Sign out */}
+        {/* Notifications + Sign out (only when signed in) */}
         <div className="hidden md:flex items-center gap-2">
-          <NotificationBell variant={variant} />
+          {user && <NotificationBell variant={variant} />}
+          {user ? (
           <button
             onClick={handleSignOut}
             className={[
@@ -113,11 +145,12 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
             <LogOut size={15} />
             Sign out
           </button>
+          ) : null}
         </div>
 
         {/* Mobile: notifications + menu button */}
         <div className="md:hidden flex items-center gap-1">
-          <NotificationBell variant={variant} />
+          {user && <NotificationBell variant={variant} />}
           <button
             onClick={() => setOpen(!open)}
             className={isLight ? 'p-2 text-white/70 hover:text-white' : 'btn-ghost p-2'}
@@ -135,34 +168,55 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
             isLight ? 'border-white/10 backdrop-blur-md bg-white/5' : 'glass border-white/5',
           ].join(' ')}
         >
-          {NAV.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className={[
-                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all',
-                path.startsWith(href)
-                  ? isLight
-                    ? 'bg-white/10 text-white'
-                    : 'bg-brand-600/20 text-brand-300'
-                  : isLight
-                    ? 'text-white/60 hover:text-white hover:bg-white/5'
-                    : 'text-white/60 hover:text-white hover:bg-white/5',
-              ].join(' ')}
-            >
-              <Icon size={16} /> {label}
-            </Link>
-          ))}
-          <button
-            onClick={handleSignOut}
-            className={[
-              'flex items-center gap-3 px-4 py-3 rounded-xl text-sm w-full',
-              isLight ? 'text-white/70 hover:text-white' : 'text-white/40 hover:text-white',
-            ].join(' ')}
-          >
-            <LogOut size={16} /> Sign out
-          </button>
+          {user ? (
+            <>
+              {NAV.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setOpen(false)}
+                  className={[
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all',
+                    path.startsWith(href)
+                      ? isLight
+                        ? 'bg-white/10 text-white'
+                        : 'bg-brand-600/20 text-brand-300'
+                      : isLight
+                        ? 'text-white/60 hover:text-white hover:bg-white/5'
+                        : 'text-white/60 hover:text-white hover:bg-white/5',
+                  ].join(' ')}
+                >
+                  <Icon size={16} /> {label}
+                </Link>
+              ))}
+              <button
+                onClick={handleSignOut}
+                className={[
+                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm w-full',
+                  isLight ? 'text-white/70 hover:text-white' : 'text-white/40 hover:text-white',
+                ].join(' ')}
+              >
+                <LogOut size={16} /> Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm w-full text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm w-full bg-brand-600/20 text-brand-300 border border-brand-600/30 hover:bg-brand-600/30"
+              >
+                Get started
+              </Link>
+            </>
+          )}
         </div>
       )}
     </header>

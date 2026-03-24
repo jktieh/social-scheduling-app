@@ -49,7 +49,7 @@ export default function SignupPage() {
 
       <div className="relative w-full max-w-md animate-fade-in">
         <Link href="/" className="block text-center mb-8">
-          <span className="text-3xl font-extrabold gradient-text" style={{ fontFamily: 'var(--font-display)' }}>
+          <span className="text-3xl font-extrabold text-white" style={{ fontFamily: 'var(--font-display)' }}>
             nichly
           </span>
         </Link>
