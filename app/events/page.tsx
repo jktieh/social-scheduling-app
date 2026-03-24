@@ -18,7 +18,11 @@ export default async function EventsPage({ searchParams }: Props) {
 
   if (!user) redirect('/login')
 
-  console.log('Authenticated user:', user)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('city')
+    .eq('id', user.id)
+    .single()
 
   // Fetch categories
   const { data: categories, error: catError } = await supabase
@@ -54,6 +58,11 @@ export default async function EventsPage({ searchParams }: Props) {
     .gte('proposed_start', new Date().toISOString())
     .order('proposed_start', { ascending: true })
 
+  // Filter by user's city when set
+  if (profile?.city?.trim()) {
+    query = query.ilike('city', profile.city.trim())
+  }
+
   // Filter by status
   if (status === 'open') query = query.eq('status', 'open')
   else if (status === 'confirmed') query = query.eq('status', 'confirmed')
@@ -80,7 +89,9 @@ export default async function EventsPage({ searchParams }: Props) {
           Discover Events
         </h1>
         <p className="text-white/40">
-          Express interest — when enough people join, the event is confirmed automatically.
+          {profile?.city
+            ? `Events in ${profile.city}. Express interest — when enough people join, the event is confirmed automatically.`
+            : 'Express interest — when enough people join, the event is confirmed automatically.'}
         </p>
       </div>
 
