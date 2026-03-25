@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import ChatBox from '@/components/ChatBox'
 import InterestedButton from '@/components/InterestedButton'
 import EventSettingsPanel from '@/components/EventSettingsPanel'
@@ -83,6 +84,7 @@ export default async function EventPage({ params }: Props) {
   const isOpen = e.status === 'open'
   const isMember = myStatus === 'interested' || myStatus === 'confirmed'
   const isConfirmedMember = myStatus === 'confirmed'
+  const canEdit = e.created_by === user.id || !!participants?.find(p => p.user_id === user.id && p.is_host)
 
   const displayVenue = (e.confirmed_venue as any) || e.venue
   const displayStart = isConfirmed && e.confirmed_start ? e.confirmed_start : e.proposed_start
@@ -115,6 +117,14 @@ export default async function EventPage({ params }: Props) {
                     {e.title}
                   </h1>
                   {e.interest && <p className="text-brand-400 text-sm mt-1">{e.interest.name}</p>}
+                  {canEdit && (
+                    <Link
+                      href={`/events/${e.id}/edit`}
+                      className="inline-flex mt-3 items-center rounded-lg px-3 py-1.5 text-xs font-semibold bg-brand-600/20 text-brand-300 border border-brand-500/40 hover:bg-brand-600/30 hover:text-brand-200 transition-all"
+                    >
+                      Edit event
+                    </Link>
+                  )}
                 </div>
               </div>
 

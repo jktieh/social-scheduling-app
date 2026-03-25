@@ -84,15 +84,20 @@ export default async function EventsPage({ searchParams }: Props) {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-extrabold mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-          Discover Events
-        </h1>
-        <p className="text-white/40">
-          {profile?.city
-            ? `Events in ${profile.city}. Express interest — when enough people join, the event is confirmed automatically.`
-            : 'Express interest — when enough people join, the event is confirmed automatically.'}
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-4xl font-extrabold mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+            Discover Events
+          </h1>
+          <p className="text-white/40">
+            {profile?.city
+              ? `Events in ${profile.city}. Express interest — when enough people join, the event is confirmed automatically.`
+              : 'Express interest — when enough people join, the event is confirmed automatically.'}
+          </p>
+        </div>
+        <Link href="/events/new" className="btn-primary whitespace-nowrap">
+          + Create event
+        </Link>
       </div>
 
       {/* How it works callout */}
