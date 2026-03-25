@@ -72,7 +72,7 @@ export default async function ProfilePage() {
           </div>
           <div className="flex gap-2">
             <Link href="/onboarding" className="btn-ghost flex items-center gap-2 text-sm px-4 py-2">
-              Preferences
+              Onboarding
             </Link>
             <Link href="/profile/edit" className="btn-secondary flex items-center gap-2 text-sm px-4 py-2">
               <Edit3 size={14} /> Edit
