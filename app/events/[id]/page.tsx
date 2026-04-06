@@ -2,8 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import ChatBox from '@/components/ChatBox'
 import InterestedButton from '@/components/InterestedButton'
+import EventChatSection from '@/components/EventChatSection'
+import { EventMembershipProvider } from '@/components/EventMembershipContext'
 import EventSettingsPanel from '@/components/EventSettingsPanel'
 import { MapPin, Clock, Users, Zap, CheckCircle2 } from 'lucide-react'
 import { avatarUrl, formatEventTime } from '@/lib/utils'
@@ -91,6 +92,7 @@ export default async function EventPage({ params }: Props) {
   const displayEnd = isConfirmed && e.confirmed_end ? e.confirmed_end : e.proposed_end
 
   return (
+    <EventMembershipProvider initialIsMember={isMember}>
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -188,19 +190,11 @@ export default async function EventPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Chat — only for members */}
-          {myProfile && isMember && (
-            <ChatBox eventId={e.id} currentUser={myProfile} />
-          )}
-
-          {/* Not a member yet — teaser */}
-          {!isMember && (
-            <div className="card text-center py-8">
-              <p className="text-3xl mb-3">💬</p>
-              <p className="font-semibold text-white/70 mb-1">Group Chat</p>
-              <p className="text-white/40 text-sm">Express interest to unlock the group chat.</p>
-            </div>
-          )}
+          <EventChatSection
+            eventId={e.id}
+            myProfile={myProfile}
+            serverIsMember={isMember}
+          />
 
           {/* Settings panel — only for confirmed members */}
           {isConfirmedMember && myProfile && (
@@ -267,5 +261,6 @@ export default async function EventPage({ params }: Props) {
         </div>
       </div>
     </div>
+    </EventMembershipProvider>
   )
 }

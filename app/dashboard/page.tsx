@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import EventCard from '@/components/EventCard'
+import FindEventsQueue from '@/components/FindEventsQueue'
 import { Sparkles, CalendarCheck, ArrowRight, Bell } from 'lucide-react'
+import { mergeSuggestionsForQueue } from '@/lib/find-events-queue'
 import { eventMatchesAvailability } from '@/lib/utils'
 import type { Event, ParticipantStatus } from '@/types'
 
@@ -94,6 +96,8 @@ export default async function DashboardPage() {
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
   const confirmedCount = myEvents.filter(e => e.status === 'confirmed').length
 
+  const queueSuggestions = mergeSuggestionsForQueue(discoverEvents, myEvents, 3)
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Hero greeting */}
@@ -126,6 +130,8 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      <FindEventsQueue className="mb-10" />
 
       {/* My Events */}
       {myEvents.length > 0 && (

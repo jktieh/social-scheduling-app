@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useEventMembership } from '@/components/EventMembershipContext'
 import { Users, Loader2, Sparkles, CheckCircle2 } from 'lucide-react'
 
 interface Props {
@@ -21,6 +23,8 @@ export default function InterestedButton({
   userStatus: initialUserStatus,
   eventStatus,
 }: Props) {
+  const router = useRouter()
+  const membershipCtx = useEventMembership()
   const [count, setCount] = useState(initialCount)
   const [myStatus, setMyStatus] = useState(initialUserStatus)
   const [loading, setLoading] = useState(false)
@@ -47,9 +51,16 @@ export default function InterestedButton({
       if (data.action === 'added') {
         setCount(data.interested_count ?? count + 1)
         setMyStatus('interested')
+        membershipCtx?.setMember(true)
+        router.refresh()
       } else if (data.action === 'removed') {
         setCount(c => Math.max(0, c - 1))
         setMyStatus(null)
+        membershipCtx?.setMember(false)
+        router.refresh()
+      } else if (data.action === 'already_confirmed') {
+        membershipCtx?.setMember(true)
+        router.refresh()
       }
     } finally {
       setLoading(false)
@@ -66,7 +77,7 @@ export default function InterestedButton({
           <CheckCircle2 size={18} />
           <span>Event Confirmed!</span>
         </div>
-        <p className="text-white/40 text-sm">{count} people are going</p>
+        <p className="text-slate-500 text-sm">{count} people are going</p>
         {isConfirmed && (
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 text-sm font-medium">
             <CheckCircle2 size={14} />
@@ -82,10 +93,10 @@ export default function InterestedButton({
       {/* Progress toward threshold */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-white/50">
+          <span className="text-slate-500">
             {count} of {threshold} needed
           </span>
-          <span className={remaining === 0 ? 'text-teal-400 font-semibold' : 'text-white/30'}>
+          <span className={remaining === 0 ? 'text-teal-400 font-semibold' : 'text-slate-400'}>
             {remaining === 0 ? 'Threshold met!' : `${remaining} more to confirm`}
           </span>
         </div>
@@ -100,7 +111,7 @@ export default function InterestedButton({
             }}
           />
         </div>
-        <p className="text-white/25 text-xs">{maxAttendees} max attendees</p>
+        <p className="text-slate-400 text-xs">{maxAttendees} max attendees</p>
       </div>
 
       {/* Button */}
@@ -113,7 +124,7 @@ export default function InterestedButton({
           isInterested
             ? 'bg-brand-600/20 border border-brand-500/40 text-brand-300 hover:bg-brand-600/30'
             : isClosed && !isMember
-            ? 'bg-white/5 text-white/25 cursor-not-allowed'
+            ? 'bg-white/5 text-slate-400 cursor-not-allowed'
             : 'bg-brand-600 hover:bg-brand-500 text-white hover:shadow-lg hover:shadow-brand-600/30 hover:-translate-y-0.5 active:translate-y-0',
         ].join(' ')}
       >
@@ -138,7 +149,7 @@ export default function InterestedButton({
       </button>
 
       {isInterested && (
-        <p className="text-center text-white/30 text-xs">
+        <p className="text-center text-slate-400 text-xs">
           You'll be notified when the event is confirmed. Click again to remove.
         </p>
       )}
