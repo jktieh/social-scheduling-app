@@ -16,8 +16,13 @@ type Phase = 'idle' | 'queueing' | 'matched'
 export interface FindEventsQueueProps {
   className?: string
   /**
-   * Real events to show after the queue (e.g. discover + your events).
-   * When omitted or empty, demo suggestions linking to `/events` are used.
+   * `discover` — `suggestions` are personalized (interests + city + availability); never uses demo data.
+   * `demo` (default) — uses built-in demo cards when `suggestions` is omitted or empty.
+   */
+  source?: 'demo' | 'discover'
+  /**
+   * When `source` is `discover`, pass rows from the same list as “Discover Events” (may be empty).
+   * When `source` is `demo`, omit to use demo suggestions.
    */
   suggestions?: QueueEventSuggestion[]
 }
@@ -25,13 +30,16 @@ export interface FindEventsQueueProps {
 /**
  * Matchmaking CTA with a video-game queue feel (simulated until a backend exists).
  */
-export default function FindEventsQueue({ className = '', suggestions }: FindEventsQueueProps) {
+export default function FindEventsQueue({
+  className = '',
+  source = 'demo',
+  suggestions,
+}: FindEventsQueueProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [phraseIndex, setPhraseIndex] = useState(0)
   const [playersFound, setPlayersFound] = useState(1)
   const [progress, setProgress] = useState(0)
   const [revealedRows, setRevealedRows] = useState<QueueEventSuggestion[]>([])
-  const [matchedWasLive, setMatchedWasLive] = useState(false)
   const simulationRef = useRef<{ cancel: () => void } | null>(null)
 
   const reset = useCallback(() => {
@@ -42,15 +50,18 @@ export default function FindEventsQueue({ className = '', suggestions }: FindEve
     setPlayersFound(1)
     setProgress(0)
     setRevealedRows([])
-    setMatchedWasLive(false)
   }, [])
 
   useEffect(() => () => simulationRef.current?.cancel(), [])
 
   const startMatchmaking = useCallback(() => {
     if (phase !== 'idle') return
-    const rows = suggestions?.length ? suggestions : MOCK_QUEUE_SUGGESTIONS
-    setMatchedWasLive(!!(suggestions && suggestions.length > 0))
+    const rows =
+      source === 'discover'
+        ? (suggestions ?? [])
+        : suggestions?.length
+          ? suggestions
+          : MOCK_QUEUE_SUGGESTIONS
     setPhase('queueing')
     setPhraseIndex(0)
     setPlayersFound(1)
@@ -68,7 +79,7 @@ export default function FindEventsQueue({ className = '', suggestions }: FindEve
         simulationRef.current = null
       },
     })
-  }, [phase, suggestions])
+  }, [phase, source, suggestions])
 
   const cancel = useCallback(() => {
     if (phase !== 'queueing') return
@@ -220,9 +231,13 @@ export default function FindEventsQueue({ className = '', suggestions }: FindEve
                     Match found — your picks
                   </p>
                   <p className="text-sm text-white/45">
-                    {matchedWasLive
-                      ? 'Based on discover and events you’re into — tap a card to open the event.'
-                      : 'Demo suggestions — set up your profile to see real matches.'}
+                    {source === 'discover'
+                      ? revealedRows.length > 0
+                        ? 'Pulled from Discover below: your interests, city, and availability — open a card for details.'
+                        : 'Nothing in Discover matched right now. Finish interests & availability in onboarding, or browse all events.'
+                      : revealedRows.length > 0
+                        ? 'Tap a card to open the event.'
+                        : 'Demo suggestions — add city, interests, and availability on your profile to unlock personalized picks.'}
                   </p>
                 </div>
               )}

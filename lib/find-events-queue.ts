@@ -49,6 +49,14 @@ export function eventsToQueueSuggestions(events: Event[], max = 3): QueueEventSu
   })
 }
 
+/** Top discover matches only (same filters as dashboard “Discover Events”) — links to `/events/[id]`. */
+export function discoverEventsToQueueSuggestions(
+  discover: Event[] | null | undefined,
+  max = 3
+): QueueEventSuggestion[] {
+  return eventsToQueueSuggestions(discover ?? [], max)
+}
+
 /** Discover first, then events you’re already in — unique, capped. */
 export function mergeSuggestionsForQueue(discover: Event[] | null | undefined, mine: Event[], max = 3): QueueEventSuggestion[] {
   const merged: Event[] = []

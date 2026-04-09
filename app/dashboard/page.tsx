@@ -4,7 +4,7 @@ import Link from 'next/link'
 import EventCard from '@/components/EventCard'
 import FindEventsQueue from '@/components/FindEventsQueue'
 import { Sparkles, CalendarCheck, ArrowRight, Bell } from 'lucide-react'
-import { mergeSuggestionsForQueue } from '@/lib/find-events-queue'
+import { discoverEventsToQueueSuggestions } from '@/lib/find-events-queue'
 import { eventMatchesAvailability } from '@/lib/utils'
 import type { Event, ParticipantStatus } from '@/types'
 
@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile && !profile.onboarding_complete) redirect('/onboarding')
+  if (!profile?.onboarding_complete) redirect('/onboarding')
 
   // User's events (interested or confirmed)
   const { data: participations } = await supabase
@@ -96,7 +96,9 @@ export default async function DashboardPage() {
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
   const confirmedCount = myEvents.filter(e => e.status === 'confirmed').length
 
-  const queueSuggestions = mergeSuggestionsForQueue(discoverEvents, myEvents, 3)
+  const discoverQueueSuggestions = canDiscover
+    ? discoverEventsToQueueSuggestions(discoverEvents, 3)
+    : undefined
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -131,7 +133,11 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <FindEventsQueue className="mb-10" />
+      <FindEventsQueue
+        className="mb-10"
+        source={canDiscover ? 'discover' : 'demo'}
+        suggestions={discoverQueueSuggestions}
+      />
 
       {/* My Events */}
       {myEvents.length > 0 && (
